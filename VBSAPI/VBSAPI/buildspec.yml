@@ -1,0 +1,36 @@
+﻿version: 0.2
+
+env:
+  variables:
+    DOTNET_ROOT: /root/.dotnet
+
+phases:
+  install:
+    runtime-versions:
+      dotnet: 3.1
+  pre_build:
+    commands:
+      - echo Restore started on `date`
+      - pwd
+      - export PATH="$PATH:/root/.dotnet/tools"
+      - cd VBS.Web
+      - PROJ=$(basename $PWD)
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - ARTIFACT_PKG_NAME=$PROJ-$COMMIT_HASH-$CODEBUILD_BUILD_NUMBER.zip
+      - dotnet clean
+      - dotnet restore
+  build:
+    commands:
+      - dotnet new -i Amazon.Lambda.Templates::*
+      - dotnet tool install -g Amazon.Lambda.Tools
+      - dotnet tool update -g Amazon.Lambda.Tools
+      - dotnet lambda package
+      - echo $CODEBUILD_BUILD_NUMBER
+      - echo $CODEBUILD_SOURCE_VERSION
+      - cp bin/Release/netcoreapp2.1/VBS.Web.zip $ARTIFACT_PKG_NAME
+       
+artifacts: 
+  files:
+    - $PROJ/$ARTIFACT_PKG_NAME
+  name: builds/$PROJ
+  discard-paths: yes
